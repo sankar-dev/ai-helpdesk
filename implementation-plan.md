@@ -15,7 +15,7 @@ Each phase ends with something working that you can see or test. Tasks are small
 - [x] Create `server/` with Express + TypeScript (tsx for dev, tsc for build)
 - [x] Add `docker-compose.yml` with Postgres and Mailpit
 - [x] Add Prisma to `server/` and generate the client
-- [ ] Connect to Postgres and run a first migration (needs Docker or a local Postgres)
+- [x] Connect to Postgres (local PostgreSQL 18); first migration runs in Phase 2 when models are added
 - [x] Add `.env.example` with all variables from tech-stack.md; add `.env` to `.gitignore`
 - [x] Add `GET /api/health` endpoint that checks the database connection
 - [x] Configure the Vite dev proxy so `/api` requests go to the Express server
