@@ -9,17 +9,18 @@ Each phase ends with something working that you can see or test. Tasks are small
 ## Phase 1: Project setup
 **Done when:** client and server both run locally, and the server connects to Postgres.
 
-- [ ] Create `client/` with Vite + React + TypeScript
-- [ ] Add Tailwind CSS and initialise shadcn/ui in `client/`
-- [ ] Add React Router with placeholder pages: Login, Dashboard, Tickets, Ticket Detail, Users
-- [ ] Create `server/` with Express + TypeScript (tsx for dev, tsc for build)
-- [ ] Add `docker-compose.yml` with Postgres and Mailpit
-- [ ] Add Prisma to `server/`, connect to Postgres, run a first empty migration
-- [ ] Add `.env.example` with all variables from tech-stack.md; add `.env` to `.gitignore`
-- [ ] Add `GET /api/health` endpoint that checks the database connection
-- [ ] Configure the Vite dev proxy so `/api` requests go to the Express server
-- [ ] Add ESLint + Prettier, and Vitest to the server
-- [ ] Initialise git and make the first commit
+- [x] Create `client/` with Vite + React + TypeScript
+- [x] Add Tailwind CSS and initialise shadcn/ui in `client/`
+- [x] Add React Router with placeholder pages: Login, Dashboard, Tickets, Ticket Detail, Users
+- [x] Create `server/` with Express + TypeScript (tsx for dev, tsc for build)
+- [x] Add `docker-compose.yml` with Postgres and Mailpit
+- [x] Add Prisma to `server/` and generate the client
+- [ ] Connect to Postgres and run a first migration (needs Docker or a local Postgres)
+- [x] Add `.env.example` with all variables from tech-stack.md; add `.env` to `.gitignore`
+- [x] Add `GET /api/health` endpoint that checks the database connection
+- [x] Configure the Vite dev proxy so `/api` requests go to the Express server
+- [x] Add oxlint + Prettier, and Vitest to the server
+- [x] Initialise git and make the first commit
 
 ---
 

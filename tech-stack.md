@@ -19,6 +19,7 @@ TypeScript across the whole project: one language, shared types between frontend
 | **Authentication** | Better Auth with database sessions | Login, sessions, Admin/Agent roles |
 | **Email** | Postmark | Inbound webhook (receive) and outbound API (send) |
 | **LLM** | Claude via Anthropic TypeScript SDK | Classification, summaries, replies |
+| **Linting** | oxlint + Prettier | Fast linting and formatting |
 | **Testing** | Vitest + eval script | Unit tests and AI accuracy evaluation |
 | **Local dev** | Docker Compose, Mailpit, ngrok | Postgres + local mail catcher; expose webhook to Postmark |
 
