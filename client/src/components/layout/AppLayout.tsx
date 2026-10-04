@@ -1,4 +1,6 @@
-import { NavLink, Outlet } from 'react-router'
+import { Navigate, NavLink, Outlet, useNavigate } from 'react-router'
+import { Button } from '@/components/ui/button'
+import { signOut, useSession } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -8,6 +10,26 @@ const navItems = [
 ]
 
 export default function AppLayout() {
+  const navigate = useNavigate()
+  const { data: session, isPending } = useSession()
+
+  if (isPending) {
+    return (
+      <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    )
+  }
+
+  if (!session) {
+    return <Navigate to="/login" replace />
+  }
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <div className="flex min-h-svh">
       <aside className="w-56 shrink-0 border-r bg-sidebar p-4">
@@ -29,9 +51,17 @@ export default function AppLayout() {
           ))}
         </nav>
       </aside>
-      <main className="flex-1 p-8">
-        <Outlet />
-      </main>
+      <div className="flex flex-1 flex-col">
+        <header className="flex items-center justify-end gap-3 border-b px-8 py-3">
+          <span className="text-sm font-medium">{session.user.name}</span>
+          <Button variant="outline" size="sm" onClick={handleSignOut}>
+            Sign out
+          </Button>
+        </header>
+        <main className="flex-1 p-8">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
