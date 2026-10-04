@@ -42,16 +42,16 @@ Each phase ends with something working that you can see or test. Tasks are small
 **Done when:** admins and agents can log in and out, routes are protected by role, and admins can manage users.
 
 ### Backend
-- [ ] Install Better Auth with the Prisma adapter; generate its tables (`user`, `session`, `account`, `verification`) and migrate
-- [ ] Add a `role` field to `user` (default `agent`)
-- [ ] Configure database sessions: httpOnly cookie, sameSite=lax, 7-day expiry, secure in production
+- [x] Install Better Auth with the Prisma adapter; generate its tables (`user`, `session`, `account`, `verification`) and migrate
+- [x] Add a `role` field to `user` (default `agent`)
+- [x] Configure database sessions: httpOnly cookie, sameSite=lax, 7-day expiry, secure in production
 - [ ] Disable public signup
-- [ ] Mount Better Auth routes on Express
-- [ ] Write `requireAuth` middleware (loads session and user, returns 401 if missing)
-- [ ] Write `requireAdmin` middleware (returns 403 if not admin)
-- [ ] Add seed script for the first admin account
+- [x] Mount Better Auth routes on Express
+- [x] Write `requireAuth` middleware (loads session and user, returns 401 if missing)
+- [x] Write `requireAdmin` middleware (returns 403 if not admin)
+- [x] Add seed script for the first admin account
 - [ ] Add user management API (admin only): list, create, update role, deactivate (deletes their sessions), reactivate
-- [ ] Tests: unauthenticated request gets 401, agent on admin route gets 403
+- [x] Tests: unauthenticated request gets 401, agent on admin route gets 403
 
 ### Frontend
 - [ ] Build the Login page (email + password form, error message)

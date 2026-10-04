@@ -17,4 +17,7 @@ export const config = {
   port: Number(process.env.PORT ?? 3000),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   databaseUrl: required('DATABASE_URL'),
+  clientUrl: process.env.CLIENT_URL ?? 'http://localhost:5173',
+  betterAuthSecret: required('BETTER_AUTH_SECRET'),
+  betterAuthUrl: required('BETTER_AUTH_URL'),
 }

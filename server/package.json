@@ -13,12 +13,14 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
+    "db:seed-admin": "tsx src/scripts/seed-admin.ts",
     "postinstall": "prisma generate"
   },
   "type": "module",
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "better-auth": "^1.7.7",
     "express": "^5.2.1"
   },
   "devDependencies": {
