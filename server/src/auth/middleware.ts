@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
 import { fromNodeHeaders } from 'better-auth/node'
+import { Role } from '../generated/prisma/enums.js'
 import { auth } from './auth.js'
 
 // Loads the session from the database; 401 if there isn't a valid one.
@@ -16,7 +17,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
 // Use after requireAuth.
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  if (req.user?.role !== 'admin') {
+  if (req.user?.role !== Role.admin) {
     res.status(403).json({ error: 'Forbidden' })
     return
   }

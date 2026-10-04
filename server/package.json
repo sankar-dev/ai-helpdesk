@@ -13,7 +13,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed-admin": "tsx src/scripts/seed-admin.ts",
+    "db:seed": "prisma db seed",
     "postinstall": "prisma generate"
   },
   "type": "module",

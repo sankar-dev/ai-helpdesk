@@ -2,10 +2,11 @@ import express from 'express'
 import request from 'supertest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.js'
+import { Role } from '../generated/prisma/enums.js'
 import { auth, type Session } from './auth.js'
 import { requireAdmin, requireAuth } from './middleware.js'
 
-function fakeSession(role: 'admin' | 'agent'): Session {
+function fakeSession(role: Role): Session {
   const now = new Date()
   return {
     user: {
@@ -59,7 +60,7 @@ describe('requireAuth', () => {
   })
 
   it('returns the user with a session', async () => {
-    mockSession(fakeSession('agent'))
+    mockSession(fakeSession(Role.agent))
 
     const res = await request(createApp()).get('/api/me')
 
@@ -78,7 +79,7 @@ describe('requireAdmin', () => {
   })
 
   it('returns 403 for an agent', async () => {
-    mockSession(fakeSession('agent'))
+    mockSession(fakeSession(Role.agent))
 
     const res = await request(adminApp()).get('/admin')
 
@@ -87,7 +88,7 @@ describe('requireAdmin', () => {
   })
 
   it('allows an admin', async () => {
-    mockSession(fakeSession('admin'))
+    mockSession(fakeSession(Role.admin))
 
     const res = await request(adminApp()).get('/admin')
 

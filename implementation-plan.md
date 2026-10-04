@@ -45,7 +45,7 @@ Each phase ends with something working that you can see or test. Tasks are small
 - [x] Install Better Auth with the Prisma adapter; generate its tables (`user`, `session`, `account`, `verification`) and migrate
 - [x] Add a `role` field to `user` (default `agent`)
 - [x] Configure database sessions: httpOnly cookie, sameSite=lax, 7-day expiry, secure in production
-- [ ] Disable public signup
+- [x] Disable public signup
 - [x] Mount Better Auth routes on Express
 - [x] Write `requireAuth` middleware (loads session and user, returns 401 if missing)
 - [x] Write `requireAdmin` middleware (returns 403 if not admin)

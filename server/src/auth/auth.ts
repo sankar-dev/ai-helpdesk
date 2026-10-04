@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth'
 import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { config } from '../config.js'
 import { prisma } from '../db.js'
+import { Role } from '../generated/prisma/enums.js'
 
 // Sessions live in the database (no secondaryStorage, no cookieCache), so
 // every request is checked against the session table and logout is immediate.
@@ -12,12 +13,13 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   emailAndPassword: {
     enabled: true,
+    disableSignUp: true, // users are created by admins (see scripts/seed-admin.ts)
     minPasswordLength: 8,
   },
   user: {
     additionalFields: {
       // input: false stops clients from choosing their own role at signup
-      role: { type: 'string', defaultValue: 'agent', input: false },
+      role: { type: [Role.admin, Role.agent], defaultValue: Role.agent, input: false },
     },
   },
   session: {
