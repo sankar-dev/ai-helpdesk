@@ -18,6 +18,7 @@ For the Claude API / Anthropic SDK, use the `claude-api` skill.
 - `server/`: Express 5 + TypeScript (ESM), Prisma 7 with the `pg` adapter. App setup in `src/app.ts`, entry in `src/index.ts`, routes in `src/routes/`. The Prisma client is generated into `src/generated/prisma/`; don't edit it by hand.
 - `e2e/`: Playwright end-to-end tests, a separate npm package (see Testing below).
 - `.claude/agents/code-reviewer.md`: read-only subagent that reviews changes for correctness bugs and security vulnerabilities. Use it before committing non-trivial changes.
+- `.claude/agents/e2e-test-writer.md`: subagent that writes, runs, and fixes Playwright tests in `e2e/`. Use it for all E2E test work (see Testing).
 - `docker-compose.yml`: Postgres and Mailpit for local dev. Locally, the server currently uses a native PostgreSQL 18 install instead.
 - Env: copy `.env.example` to `server/.env`. Never commit `.env`.
 
@@ -46,13 +47,8 @@ E2E (`cd e2e`): `npm test`, `npm run test:ui`, `npm run report`, `npm run typech
 ## Testing
 
 - Server unit/integration tests: Vitest + supertest in `server/src/**/*.test.ts`, run against `createApp()` from `src/app.ts`.
-- E2E: Playwright in `e2e/`. The config starts its own API on port 3001 and Vite on port 5174 (`API_PROXY_TARGET` in `client/vite.config.ts` points the proxy at it), so it runs beside `npm run dev`. A run takes about 40s to 2 minutes, mostly the server cold start. The DB user in `server/.env` is not a superuser, so it cannot drop `helpdesk_test` while a superuser session (e.g. pgAdmin) is connected; tests never need to drop it.
-- E2E database: `helpdesk_test`, derived from `DATABASE_URL` in `server/.env` with the database renamed, or `TEST_DATABASE_URL` if set. `e2e/test-env.ts` holds the ports, test DB URL, test admin (`admin@helpdesk.test`) and the env passed to the server. It refuses any database whose name doesn't end in `_test`, because it gets wiped.
-- Playwright starts web servers before `globalSetup`, so the API `webServer` waits on its port, not `/api/health` (which needs the DB). The server only connects to the DB on the first query, so preparing it afterwards is safe.
-- `e2e/global-setup.ts` runs `prepareTestDatabase()` from `e2e/scripts/prepare-db.ts` (creates the test DB if missing, `prisma migrate deploy`, truncates every table, seeds the test admin), then signs in as the admin and saves the session to `e2e/playwright/.auth/admin.json`. Tests opt in with `test.use({ storageState: adminStorageState })`. `npm run db:prepare` runs just the DB step.
-- `e2e/global-teardown.ts` deletes `e2e/playwright/.auth/` (live session tokens). Test data is kept for debugging and reset on the next run.
-- Prisma and the server get the test env from `serverTestEnv`; it overrides `server/.env` because `process.loadEnvFile()` never replaces existing variables.
-- Locally, `reuseExistingServer` reuses servers already on ports 3001/5174; the DB is still reset each run. Tests run with one worker because they share the database.
+- E2E: Playwright in `e2e/`, with its own servers (ports 3001/5174) and a separate `helpdesk_test` database that is wiped each run. How the setup works and the test-writing conventions live in `.claude/agents/e2e-test-writer.md`.
+- **Always delegate E2E test work to the `e2e-test-writer` subagent**: writing new Playwright tests, extending or fixing existing ones, and debugging failing E2E runs. Don't write `e2e/` tests directly in the main session. Give it the feature or flow to cover, plus anything it can't see in the code (e.g. expected behaviour not built yet). Relay its report: files changed, pass/fail result, and any app bugs it found.
 
 ## Conventions
 
