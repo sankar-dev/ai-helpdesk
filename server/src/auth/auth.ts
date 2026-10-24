@@ -13,7 +13,7 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   emailAndPassword: {
     enabled: true,
-    disableSignUp: true, // users are created by admins (see scripts/seed-admin.ts)
+    disableSignUp: true, // users are created by admins (see scripts/seed.ts)
     minPasswordLength: 8,
   },
   user: {
