@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/tickets', label: 'Tickets' },
-  { to: '/users', label: 'Users' },
+  { to: '/users', label: 'Users', adminOnly: true },
 ]
 
 export default function AppLayout() {
@@ -35,20 +35,22 @@ export default function AppLayout() {
       <aside className="w-56 shrink-0 border-r bg-sidebar p-4">
         <div className="mb-6 px-2 text-lg font-semibold">Helpdesk</div>
         <nav className="flex flex-col gap-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                cn(
-                  'rounded-md px-2 py-1.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent',
-                  isActive && 'bg-sidebar-accent font-medium',
-                )
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {navItems
+            .filter((item) => !item.adminOnly || session.user.role === 'admin')
+            .map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    'rounded-md px-2 py-1.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent',
+                    isActive && 'bg-sidebar-accent font-medium',
+                  )
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
         </nav>
       </aside>
       <div className="flex flex-1 flex-col">
