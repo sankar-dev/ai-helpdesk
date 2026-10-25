@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { signOut, useSession } from '@/lib/auth-client'
+import { queryClient } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -12,6 +14,7 @@ const navItems = [
 export default function AppLayout() {
   const navigate = useNavigate()
   const { data: session, isPending } = useSession()
+  const [signOutError, setSignOutError] = useState(false)
 
   if (isPending) {
     return (
@@ -26,7 +29,13 @@ export default function AppLayout() {
   }
 
   async function handleSignOut() {
-    await signOut()
+    const { error } = await signOut()
+    if (error) {
+      setSignOutError(true)
+      return
+    }
+    // Drop cached API data so the next user to sign in on this tab can't see it
+    queryClient.clear()
     navigate('/login', { replace: true })
   }
 
@@ -55,6 +64,9 @@ export default function AppLayout() {
       </aside>
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-end gap-3 border-b px-8 py-3">
+          {signOutError && (
+            <span className="text-sm text-destructive">Sign out failed. Try again.</span>
+          )}
           <span className="text-sm font-medium">{session.user.name}</span>
           <Button variant="outline" size="sm" onClick={handleSignOut}>
             Sign out

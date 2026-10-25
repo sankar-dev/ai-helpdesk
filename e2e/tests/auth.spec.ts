@@ -202,9 +202,10 @@ test.describe('session', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
 
     await withDb((db) =>
-      db.query(`UPDATE session SET "expiresAt" = now() - interval '1 minute' WHERE "userId" = $1`, [
-        agent.id,
-      ]),
+      db.query(
+        `UPDATE session SET "expiresAt" = (now() AT TIME ZONE 'UTC') - interval '1 minute' WHERE "userId" = $1`,
+        [agent.id],
+      ),
     )
 
     expect((await page.request.get('/api/me')).status()).toBe(401)
@@ -295,7 +296,7 @@ test.describe('sign out', () => {
     await expect(secondTab).toHaveURL(/\/login$/)
   })
 
-  test('signing out one browser does not end the same user\'s other sessions', async ({
+  test("signing out one browser does not end the same user's other sessions", async ({
     browser,
     page,
   }) => {

@@ -50,7 +50,8 @@ Each phase ends with something working that you can see or test. Tasks are small
 - [x] Write `requireAuth` middleware (loads session and user, returns 401 if missing)
 - [x] Write `requireAdmin` middleware (returns 403 if not admin)
 - [x] Add seed script for the first admin account
-- [ ] Add user management API (admin only): list, create, update role, deactivate (deletes their sessions), reactivate
+- [x] Add user management API (admin only): list (`GET /api/users`)
+- [ ] Add user management API (admin only): create, update role, deactivate (deletes their sessions), reactivate
 - [x] Tests: unauthenticated request gets 401, agent on admin route gets 403
 
 ### Frontend
@@ -58,7 +59,8 @@ Each phase ends with something working that you can see or test. Tasks are small
 - [x] Add an auth context/hook that loads the current user
 - [x] Add a protected route wrapper that redirects to Login; an admin-only wrapper for Users
 - [x] Build the app layout: sidebar nav (Dashboard, Tickets, Users for admins only), current user, logout button
-- [ ] Build the Users page: table of users, create user dialog, change role, deactivate/reactivate
+- [x] Build the Users page: table of users
+- [ ] Users page: create user dialog, change role, deactivate/reactivate
 
 ---
 

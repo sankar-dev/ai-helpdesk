@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signIn, useSession } from '@/lib/auth-client'
+import { queryClient } from '@/lib/query-client'
 
 const loginSchema = z.object({
   email: z.email('Enter a valid email address'),
@@ -41,6 +42,8 @@ export default function LoginPage() {
       })
       return
     }
+    // A previous session may have ended without the Sign out button (expiry, another tab), so drop its cached data
+    queryClient.clear()
     navigate('/dashboard', { replace: true })
   }
 

@@ -64,18 +64,20 @@ export async function createUser(
     role,
   }
   const hash = await hashPassword(user.password)
+  // Timestamp columns have no time zone and Prisma reads them as UTC, so write UTC, not the
+  // DB session's local time
   await withDb(async (client) => {
     await client.query('BEGIN')
     try {
       await client.query(
         `INSERT INTO "user" (id, name, email, "emailVerified", role, "createdAt", "updatedAt")
-         VALUES ($1, $2, $3, true, $4, now(), now())`,
+         VALUES ($1, $2, $3, true, $4, (now() AT TIME ZONE 'UTC'), (now() AT TIME ZONE 'UTC'))`,
         [user.id, user.name, user.email, user.role],
       )
       await client.query(
         `INSERT INTO account
            (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
-         VALUES ($1, $2, 'credential', $2, $3, now(), now())`,
+         VALUES ($1, $2, 'credential', $2, $3, (now() AT TIME ZONE 'UTC'), (now() AT TIME ZONE 'UTC'))`,
         [randomUUID(), user.id, hash],
       )
       await client.query('COMMIT')
