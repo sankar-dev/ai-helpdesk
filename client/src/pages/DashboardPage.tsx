@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiGet } from '@/lib/api'
 
 type Health = { status: string; database: string }
 
@@ -8,8 +9,8 @@ export default function DashboardPage() {
 
   // Temporary check that the client can reach the API through the Vite proxy
   useEffect(() => {
-    fetch('/api/health')
-      .then((res) => res.json())
+    // The health check answers 503 with a JSON body when the database is down; show it rather than "unreachable"
+    apiGet<Health>('/api/health', { validateStatus: (status) => status === 200 || status === 503 })
       .then(setHealth)
       .catch(() => setError(true))
   }, [])
