@@ -13,7 +13,7 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   emailAndPassword: {
     enabled: true,
-    disableSignUp: true, // users are created by admins (see scripts/seed-admin.ts)
+    disableSignUp: true, // users are created by admins (see scripts/seed.ts)
     minPasswordLength: 8,
   },
   user: {
@@ -25,6 +25,11 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 7, // 7 days
     updateAge: 60 * 60 * 24, // extend expiry at most once a day
+  },
+  // Set explicitly rather than relying on Better Auth's own production detection.
+  // Off in development and e2e tests, so repeated sign-ins aren't blocked.
+  rateLimit: {
+    enabled: config.nodeEnv === 'production',
   },
   advanced: {
     useSecureCookies: config.nodeEnv === 'production',

@@ -6,12 +6,19 @@ import { Role } from '../generated/prisma/enums.js'
 // Creates the admin from SEED_ADMIN_* env vars, or promotes the user if they already exist.
 // Public signup is disabled, so this goes through Better Auth's internal adapter instead of the signup endpoint.
 async function seedAdmin() {
-  const email = process.env.SEED_ADMIN_EMAIL
+  // Better Auth stores emails lower-cased, so normalise before looking the user up
+  const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase()
   const password = process.env.SEED_ADMIN_PASSWORD
   const name = process.env.SEED_ADMIN_NAME ?? 'Admin'
 
   if (!email || !password) {
     throw new Error('Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD')
+  }
+
+  // The internal adapter skips Better Auth's password policy, so enforce it here
+  const { minPasswordLength } = (await auth.$context).password.config
+  if (password.length < minPasswordLength) {
+    throw new Error(`SEED_ADMIN_PASSWORD must be at least ${minPasswordLength} characters`)
   }
 
   const existing = await prisma.user.findUnique({ where: { email } })

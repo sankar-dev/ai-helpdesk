@@ -56,8 +56,8 @@ Each phase ends with something working that you can see or test. Tasks are small
 ### Frontend
 - [x] Build the Login page (email + password form, error message)
 - [x] Add an auth context/hook that loads the current user
-- [ ] Add a protected route wrapper that redirects to Login; an admin-only wrapper for Users
-- [ ] Build the app layout: sidebar nav (Dashboard, Tickets, Users for admins only), current user, logout button
+- [x] Add a protected route wrapper that redirects to Login; an admin-only wrapper for Users
+- [x] Build the app layout: sidebar nav (Dashboard, Tickets, Users for admins only), current user, logout button
 - [ ] Build the Users page: table of users, create user dialog, change role, deactivate/reactivate
 
 ---

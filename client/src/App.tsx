@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import AppLayout from '@/components/layout/AppLayout'
+import RequireAdmin from '@/components/layout/RequireAdmin'
 import DashboardPage from '@/pages/DashboardPage'
 import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -16,7 +17,10 @@ const router = createBrowserRouter([
       { path: '/dashboard', element: <DashboardPage /> },
       { path: '/tickets', element: <TicketsPage /> },
       { path: '/tickets/:id', element: <TicketDetailPage /> },
-      { path: '/users', element: <UsersPage /> },
+      {
+        element: <RequireAdmin />,
+        children: [{ path: '/users', element: <UsersPage /> }],
+      },
     ],
   },
   { path: '*', element: <NotFoundPage /> },

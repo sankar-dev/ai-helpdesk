@@ -1,32 +1,44 @@
-import { useState, type FormEvent } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
 import { Navigate, useNavigate } from 'react-router'
+import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { signIn, useSession } from '@/lib/auth-client'
 
+const loginSchema = z.object({
+  email: z.email('Enter a valid email address'),
+  password: z.string().min(1, 'Enter your password'),
+})
+
+type LoginValues = z.infer<typeof loginSchema>
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const { data: session } = useSession()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  })
 
   if (session) {
     return <Navigate to="/dashboard" replace />
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(null)
-    setSubmitting(true)
-    const { error } = await signIn.email({ email, password })
-    setSubmitting(false)
+  async function onSubmit(values: LoginValues) {
+    const { error } = await signIn.email(values)
     if (error) {
       // Don't reveal whether the email exists; show the server message for other failures (e.g. rate limit)
-      setError(error.status === 401 ? 'Invalid email or password' : (error.message ?? 'Sign in failed'))
+      setError('root.server', {
+        message: error.status === 401 ? 'Invalid email or password' : (error.message ?? 'Sign in failed'),
+      })
       return
     }
     navigate('/dashboard', { replace: true })
@@ -40,17 +52,17 @@ export default function LoginPage() {
           <CardDescription>Sign in with your email and password</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                aria-invalid={!!errors.email}
+                {...register('email')}
               />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="password">Password</Label>
@@ -58,18 +70,20 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                aria-invalid={!!errors.password}
+                {...register('password')}
               />
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password.message}</p>
+              )}
             </div>
-            {error && (
+            {errors.root?.server && (
               <p role="alert" className="text-sm text-destructive">
-                {error}
+                {errors.root.server.message}
               </p>
             )}
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Signing in…' : 'Sign in'}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
         </CardContent>
