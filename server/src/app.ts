@@ -3,6 +3,7 @@ import { toNodeHandler } from 'better-auth/node'
 import { auth } from './auth/auth.js'
 import { requireAuth } from './auth/middleware.js'
 import { healthRouter } from './routes/health.js'
+import { usersRouter } from './routes/users.js'
 
 // Builds the Express app without starting it, so tests can use it directly.
 export function createApp() {
@@ -15,6 +16,7 @@ export function createApp() {
   app.use(express.json())
 
   app.use('/api/health', healthRouter)
+  app.use('/api/users', usersRouter)
 
   app.get('/api/me', requireAuth, (req, res) => {
     res.json({ user: req.user })
