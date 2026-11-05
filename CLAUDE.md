@@ -57,7 +57,7 @@ All client calls to the API go through **axios** (HTTP) and **TanStack Query** (
 
 ## Commands
 
-Client (`cd client`): `npm run dev` (port 5173, proxies `/api` to the server), `npm run build`, `npm run lint`.
+Client (`cd client`): `npm run dev` (port 5173, proxies `/api` to the server), `npm run build`, `npm run lint`, `npm test`, `npm run test:watch`.
 
 Server (`cd server`): `npm run dev` (port 3000), `npm run typecheck`, `npm run lint`, `npm test`, `npm run db:migrate`, `npm run db:generate`, `npm run db:seed` (creates the admin from `SEED_ADMIN_*` env vars), `npm run db:studio`.
 
@@ -68,8 +68,32 @@ E2E (`cd e2e`): `npm test`, `npm run test:ui`, `npm run report`, `npm run typech
 ## Testing
 
 - Server unit/integration tests: Vitest + supertest in `server/src/**/*.test.ts`, run against `createApp()` from `src/app.ts`. They don't touch a real database. Mock Prisma with `vi.hoisted` + `vi.mock('../db.js', ...)` and then `await import('../app.js')` (see `routes/health.test.ts`, `routes/users.test.ts`). Fake a signed-in user with `fakeSession(role)` / `mockSession(...)` from `src/test/session.ts`. `src/test/` is shared test code and is excluded from the production build in `tsconfig.build.json`; keep it that way, since it imports `vitest`.
+- Client component tests: Vitest + React Testing Library + jsdom. See Component tests below.
 - E2E: Playwright in `e2e/`, with its own servers (ports 3001/5174) and a separate `helpdesk_test` database that is wiped each run. How the setup works and the test-writing conventions live in `.claude/agents/e2e-test-writer.md`.
 - **Always delegate E2E test work to the `e2e-test-writer` subagent**: writing new Playwright tests, extending or fixing existing ones, and debugging failing E2E runs. Don't write `e2e/` tests directly in the main session. Give it the feature or flow to cover, plus anything it can't see in the code (e.g. expected behaviour not built yet). Relay its report: files changed, pass/fail result, and any app bugs it found.
+
+### Component tests
+
+Test files sit next to the component as `client/src/**/<Name>.test.tsx`. Config is in `client/vitest.config.ts`, which merges `vite.config.ts` so the `@/` alias works. Shared setup is in `src/test/setup.ts` (jest-dom matchers and cleanup after each test). `pages/UsersPage.test.tsx` is the example to follow.
+
+**Running** (from `client/`):
+
+- `npm test`: run everything once.
+- `npm test -- UsersPage`: run the files whose path matches.
+- `npm run test:watch`: re-run on change.
+- `npx tsc -b`: type-check the tests. Vitest doesn't check types, but `npm run build` does and covers everything in `src/`, so a type error in a test fails the build.
+
+**Writing:**
+
+- Import `describe`, `it`, `expect` and `vi` from `vitest`; globals are off.
+- Mock the API with `vi.mock('@/lib/api', ...)` and `vi.mocked(apiGet)`, and call `mockReset()` in `beforeEach`. Don't make real HTTP requests or mock axios directly.
+- Wrap the component in a `QueryClientProvider` with a new `QueryClient` per test, using `retry: false`. Don't use the app's singleton: its cache would leak between tests and its retries delay the error state by about 7s.
+- Cover every state the component renders: for a query, that's loading, error, empty and data. For loading, have the mock return `new Promise(() => {})` so the state doesn't change during the test.
+- Find elements as a user would, by `getByRole` (with `name`) first, then `getByText`. Use `findBy*` to wait for async content and `queryBy*` with `.not.toBeInTheDocument()` to assert something is absent. Target loading skeletons with `getByRole('status', { name: ... })`.
+- Assert behaviour, not styling: don't check Tailwind classes. To check a shadcn variant, use its `data-variant` attribute.
+- Build expected dates with `toLocaleDateString()` rather than hard-coding them, since the output depends on locale, and use midday timestamps in fixtures so the timezone doesn't change the day.
+- Don't test access control here: it's enforced on the server, so cover it in server tests and E2E.
+- Before relying on a new test, break the component on purpose and confirm that the test fails.
 
 ## Conventions
 
