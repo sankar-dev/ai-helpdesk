@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Navigate, NavLink, Outlet, useNavigate } from 'react-router'
+import { Link, Navigate, NavLink, Outlet, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { signOut, useSession } from '@/lib/auth-client'
 import { queryClient } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
@@ -17,9 +18,28 @@ export default function AppLayout() {
   const [signOutError, setSignOutError] = useState(false)
 
   if (isPending) {
+    // Same shape as the loaded layout below, so nothing jumps when the session arrives
     return (
-      <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
-        Loading…
+      <div role="status" aria-label="Loading" className="flex min-h-svh">
+        <aside className="w-56 shrink-0 border-r bg-sidebar p-4">
+          <Skeleton className="mb-6 h-7 w-28" />
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-7 w-full" />
+            <Skeleton className="h-7 w-full" />
+            <Skeleton className="h-7 w-full" />
+          </div>
+        </aside>
+        <div className="flex flex-1 flex-col">
+          <header className="flex items-center justify-end gap-3 border-b px-8 py-3">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-8 w-20" />
+          </header>
+          <main className="flex-1 space-y-4 p-8">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-full max-w-md" />
+            <Skeleton className="h-4 w-full max-w-sm" />
+          </main>
+        </div>
       </div>
     )
   }
@@ -42,7 +62,12 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-svh">
       <aside className="w-56 shrink-0 border-r bg-sidebar p-4">
-        <div className="mb-6 px-2 text-lg font-semibold">Helpdesk</div>
+        <Link
+          to="/dashboard"
+          className="mb-6 block w-fit rounded-md px-2 text-lg font-semibold text-sidebar-foreground outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Helpdesk
+        </Link>
         <nav className="flex flex-col gap-1">
           {navItems
             .filter((item) => !item.adminOnly || session.user.role === 'admin')

@@ -1,18 +1,13 @@
-export class ApiError extends Error {
-  readonly status: number
+import axios, { type AxiosRequestConfig } from 'axios'
 
-  constructor(message: string, status: number) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-  }
-}
+// Same-origin requests, so the session cookie is sent by default. Axios rejects non-2xx with an AxiosError, so TanStack Query sees the error.
+// silentJSONParsing is off so a 2xx non-JSON body (e.g. an HTML page) rejects instead of resolving as a string.
+export const api = axios.create({
+  responseType: 'json',
+  transitional: { silentJSONParsing: false },
+})
 
-// Same-origin fetch (the session cookie is sent by default); throws ApiError on non-2xx so TanStack Query sees the error.
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) {
-    throw new ApiError(`GET ${path} failed with ${res.status}`, res.status)
-  }
-  return res.json() as Promise<T>
+export async function apiGet<T>(path: string, config?: AxiosRequestConfig): Promise<T> {
+  const res = await api.get<T>(path, config)
+  return res.data
 }
