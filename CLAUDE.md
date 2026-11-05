@@ -46,7 +46,8 @@ All client calls to the API go through **axios** (HTTP) and **TanStack Query** (
   - Pass `validateStatus` per call only when another status carries a real answer (the dashboard health check accepts 503).
 - **Reads:** use `useQuery` with an array `queryKey` that starts with the resource and includes every parameter the request depends on: `['users']`, `['tickets', filters]`, `['tickets', id]`.
   - Type the response with the generic on `apiGet<T>`.
-  - Render all three states: `isPending` (loading), `isError` (a short message), and the data (with an empty state where the list can be empty). See `client/src/pages/UsersPage.tsx`.
+  - Render all three states: `isPending`, `isError` (a short message), and the data (with an empty state where the list can be empty). See `client/src/pages/UsersPage.tsx`.
+  - Loading states use skeletons, never "Loading…" text. Use the shadcn `Skeleton` (`src/components/ui/skeleton.tsx`) shaped like the content it replaces: for tables, the real header plus skeleton rows. Wrap it in `<div role="status" aria-label="Loading <thing>">` so screen readers announce it and tests can target it (`getByRole('status', { name: ... })`). `AppLayout`'s session-loading skeleton follows the same pattern.
 - **Writes:** use `useMutation`, and in `onSuccess` call `queryClient.invalidateQueries({ queryKey: [...] })` for every affected query, rather than updating local state by hand. Show the mutation's pending and error state in the UI, e.g. disable the submit button while it's pending.
 - **Shared hooks:** once a query or mutation is used in more than one place, move it into a hook in `client/src/hooks/` (e.g. `useUsers()`), so the key and URL live in one place.
 - **`QueryClient`** (`client/src/lib/query-client.ts`, provided in `main.tsx`): import this singleton, or use `useQueryClient()` inside components. Don't create another.

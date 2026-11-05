@@ -4,6 +4,10 @@ import { adminStorageState, testAdmin } from '../test-env.ts'
 
 type ApiUser = { id: string; name: string; email: string; role: string; createdAt: string }
 
+function loadingUsers(page: Page) {
+  return page.getByRole('status', { name: 'Loading users' })
+}
+
 function userRow(page: Page, email: string) {
   return page.getByRole('row').filter({ has: page.getByRole('cell', { name: email, exact: true }) })
 }
@@ -53,6 +57,9 @@ test.describe('users page as admin', () => {
 
     await expect(page).toHaveURL(/\/users$/)
     await expect(page.getByRole('heading', { level: 1, name: 'Users' })).toBeVisible()
+    // The loading skeleton has the same header row, so wait for the real table
+    await expect(loadingUsers(page)).toBeHidden()
+    await expect(page.getByRole('table')).toHaveCount(1)
     await expect(page.getByRole('columnheader')).toHaveText(['Name', 'Email', 'Role', 'Created'])
 
     const { rows } = await withDb((db) =>
@@ -72,7 +79,7 @@ test.describe('users page as admin', () => {
 
     await expect(page.getByRole('heading', { level: 1, name: 'Users' })).toBeVisible()
     await expectRow(page, agent)
-    await expect(page.getByText('Loading users…')).toBeHidden()
+    await expect(loadingUsers(page)).toBeHidden()
   })
 
   test('shows an error message when the users request fails', async ({ page }) => {
@@ -82,8 +89,9 @@ test.describe('users page as admin', () => {
     await page.goto('/users')
 
     // TanStack Query retries 5xx responses with backoff before showing the error
-    await expect(page.getByText('Loading users…')).toBeVisible()
+    await expect(loadingUsers(page)).toBeVisible()
     await expect(page.getByText("Couldn't load users.")).toBeVisible({ timeout: 20_000 })
+    await expect(loadingUsers(page)).toBeHidden()
     await expect(page.getByRole('table')).toHaveCount(0)
   })
 
@@ -92,6 +100,7 @@ test.describe('users page as admin', () => {
     await page.goto('/users')
 
     await expect(page.getByText('No users yet.')).toBeVisible()
+    await expect(loadingUsers(page)).toBeHidden()
     await expect(page.getByRole('table')).toHaveCount(0)
   })
 })
