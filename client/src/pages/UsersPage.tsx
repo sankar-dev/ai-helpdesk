@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import CreateUserDialog from '@/components/CreateUserDialog'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -40,7 +41,10 @@ export default function UsersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Users</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Users</h1>
+        <CreateUserDialog />
+      </div>
       <div className="mt-6">
         {isPending ? (
           <div role="status" aria-label="Loading users">

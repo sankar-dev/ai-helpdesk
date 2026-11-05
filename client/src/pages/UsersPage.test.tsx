@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiGet } from '@/lib/api'
 import UsersPage from './UsersPage'
 
-vi.mock('@/lib/api', () => ({ apiGet: vi.fn() }))
+vi.mock('@/lib/api', () => ({ apiGet: vi.fn(), apiPost: vi.fn() }))
 
 const mockApiGet = vi.mocked(apiGet)
 
