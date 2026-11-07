@@ -39,7 +39,13 @@ async function expectRow(
     user.email,
     user.role,
     await localDate(page, await createdAt(user.id)),
+    // The actions cell holds icon-only buttons: edit, plus delete for agents
+    '',
   ])
+  await expect(row.getByRole('button', { name: `Edit ${user.name}`, exact: true })).toBeVisible()
+  await expect(row.getByRole('button', { name: `Delete ${user.name}`, exact: true })).toHaveCount(
+    user.role === 'agent' ? 1 : 0,
+  )
 }
 
 test.describe('users page as admin', () => {
@@ -60,7 +66,13 @@ test.describe('users page as admin', () => {
     // The loading skeleton has the same header row, so wait for the real table
     await expect(loadingUsers(page)).toBeHidden()
     await expect(page.getByRole('table')).toHaveCount(1)
-    await expect(page.getByRole('columnheader')).toHaveText(['Name', 'Email', 'Role', 'Created'])
+    await expect(page.getByRole('columnheader')).toHaveText([
+      'Name',
+      'Email',
+      'Role',
+      'Created',
+      'Actions',
+    ])
 
     const { rows } = await withDb((db) =>
       db.query<{ id: string }>('SELECT id FROM "user" WHERE email = $1', [testAdmin.email]),

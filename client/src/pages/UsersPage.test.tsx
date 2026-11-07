@@ -1,12 +1,25 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { AxiosError, AxiosHeaders } from 'axios'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiGet } from '@/lib/api'
+import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api'
 import UsersPage from './UsersPage'
 
-vi.mock('@/lib/api', () => ({ apiGet: vi.fn() }))
+vi.mock('@/lib/api', () => ({
+  apiGet: vi.fn(),
+  apiPost: vi.fn(),
+  apiPatch: vi.fn(),
+  apiDelete: vi.fn(),
+}))
+// The edit dialog reads the session to refresh it after a self-edit
+vi.mock('@/lib/auth-client', () => ({
+  useSession: () => ({ data: { user: { id: 'current-admin' } }, refetch: vi.fn() }),
+}))
 
 const mockApiGet = vi.mocked(apiGet)
+const mockApiPost = vi.mocked(apiPost)
+const mockApiPatch = vi.mocked(apiPatch)
+const mockApiDelete = vi.mocked(apiDelete)
 
 const admin = {
   id: '1',
@@ -44,6 +57,9 @@ function expectTableHeaders() {
 describe('UsersPage', () => {
   beforeEach(() => {
     mockApiGet.mockReset()
+    mockApiPost.mockReset()
+    mockApiPatch.mockReset()
+    mockApiDelete.mockReset()
   })
 
   it('requests the user list from the API', async () => {
@@ -139,5 +155,194 @@ describe('UsersPage', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByText('No users yet.')).not.toBeInTheDocument()
     expect(screen.queryByRole('status', { name: 'Loading users' })).not.toBeInTheDocument()
+  })
+
+  describe('deleting a user', () => {
+    it('shows a delete button for agents but not for admins', async () => {
+      mockApiGet.mockResolvedValue({ users: [admin, agent] })
+
+      renderPage()
+
+      const adminRow = within(
+        (await screen.findByRole('cell', { name: admin.name })).closest('tr')!,
+      )
+      expect(
+        adminRow.queryByRole('button', { name: `Delete ${admin.name}` }),
+      ).not.toBeInTheDocument()
+      const agentRow = within(screen.getByRole('cell', { name: agent.name }).closest('tr')!)
+      expect(agentRow.getByRole('button', { name: `Delete ${agent.name}` })).toBeInTheDocument()
+    })
+
+    it('removes the user from the list after confirming', async () => {
+      mockApiGet.mockResolvedValueOnce({ users: [admin, agent] })
+      mockApiGet.mockResolvedValueOnce({ users: [admin] })
+      mockApiDelete.mockResolvedValue(undefined)
+      renderPage()
+
+      fireEvent.click(await screen.findByRole('button', { name: `Delete ${agent.name}` }))
+      const dialog = within(screen.getByRole('dialog', { name: 'Delete user' }))
+      fireEvent.click(dialog.getByRole('button', { name: 'Delete' }))
+
+      await waitFor(() =>
+        expect(screen.queryByRole('cell', { name: agent.name })).not.toBeInTheDocument(),
+      )
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(mockApiDelete).toHaveBeenCalledWith(`/api/users/${agent.id}`)
+      expect(mockApiGet).toHaveBeenCalledTimes(2)
+    })
+
+    it('keeps the "already deleted" message visible, then drops the row when closed', async () => {
+      mockApiGet.mockResolvedValueOnce({ users: [admin, agent] })
+      mockApiGet.mockResolvedValueOnce({ users: [admin] })
+      mockApiDelete.mockRejectedValue(
+        new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
+          status: 404,
+          statusText: '',
+          data: {},
+          headers: {},
+          config: { headers: new AxiosHeaders() },
+        }),
+      )
+      renderPage()
+
+      fireEvent.click(await screen.findByRole('button', { name: `Delete ${agent.name}` }))
+      const dialog = within(screen.getByRole('dialog', { name: 'Delete user' }))
+      fireEvent.click(dialog.getByRole('button', { name: 'Delete' }))
+
+      expect(await dialog.findByRole('alert')).toHaveTextContent(
+        'This user has already been deleted.',
+      )
+      // The list isn't refetched yet, so the row (and the dialog inside it) stays mounted
+      expect(mockApiGet).toHaveBeenCalledTimes(1)
+
+      fireEvent.click(dialog.getByRole('button', { name: 'Cancel' }))
+
+      await waitFor(() =>
+        expect(screen.queryByRole('cell', { name: agent.name })).not.toBeInTheDocument(),
+      )
+      expect(mockApiGet).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('editing a user', () => {
+    it('shows an edit button on each row', async () => {
+      mockApiGet.mockResolvedValue({ users: [admin, agent] })
+
+      renderPage()
+
+      const adminRow = within(
+        (await screen.findByRole('cell', { name: admin.name })).closest('tr')!,
+      )
+      expect(adminRow.getByRole('button', { name: `Edit ${admin.name}` })).toBeInTheDocument()
+      const agentRow = within(screen.getByRole('cell', { name: agent.name }).closest('tr')!)
+      expect(agentRow.getByRole('button', { name: `Edit ${agent.name}` })).toBeInTheDocument()
+    })
+
+    it('saves the changes and shows them in the list', async () => {
+      const renamed = { ...agent, name: 'Samantha Agent' }
+      mockApiGet.mockResolvedValueOnce({ users: [admin, agent] })
+      mockApiGet.mockResolvedValueOnce({ users: [admin, renamed] })
+      mockApiPatch.mockResolvedValue({})
+      renderPage()
+
+      fireEvent.click(await screen.findByRole('button', { name: `Edit ${agent.name}` }))
+      const dialog = within(screen.getByRole('dialog', { name: 'Edit user' }))
+      expect(dialog.getByLabelText('Email')).toHaveValue(agent.email)
+      fireEvent.change(dialog.getByLabelText('Name'), { target: { value: renamed.name } })
+      fireEvent.click(dialog.getByRole('button', { name: 'Save changes' }))
+
+      expect(await screen.findByRole('cell', { name: renamed.name })).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(mockApiPatch).toHaveBeenCalledWith(`/api/users/${agent.id}`, {
+        name: renamed.name,
+        email: agent.email,
+      })
+      expect(mockApiGet).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('creating a user', () => {
+    function newUserButton() {
+      return screen.getByRole('button', { name: 'New user' })
+    }
+
+    it('shows the New user button while the list is loading', () => {
+      mockApiGet.mockReturnValue(new Promise(() => {}))
+
+      renderPage()
+
+      expect(newUserButton()).toBeInTheDocument()
+    })
+
+    it('shows the New user button above the user list', async () => {
+      mockApiGet.mockResolvedValue({ users: [admin] })
+
+      renderPage()
+
+      const table = (await screen.findByRole('cell', { name: admin.name })).closest('table')!
+      expect(
+        newUserButton().compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    })
+
+    it('shows the New user button when there are no users', async () => {
+      mockApiGet.mockResolvedValue({ users: [] })
+
+      renderPage()
+
+      await screen.findByText('No users yet.')
+      expect(newUserButton()).toBeInTheDocument()
+    })
+
+    it('shows the New user button when the list fails to load', async () => {
+      mockApiGet.mockRejectedValue(new Error('Request failed'))
+
+      renderPage()
+
+      await screen.findByText("Couldn't load users.")
+      expect(newUserButton()).toBeInTheDocument()
+    })
+
+    it('closes the modal and shows the new user in the list', async () => {
+      mockApiGet.mockResolvedValueOnce({ users: [admin] })
+      mockApiGet.mockResolvedValueOnce({ users: [admin, agent] })
+      mockApiPost.mockResolvedValue({})
+      renderPage()
+      await screen.findByRole('cell', { name: admin.name })
+      expect(screen.queryByRole('cell', { name: agent.name })).not.toBeInTheDocument()
+
+      fireEvent.click(newUserButton())
+      const dialog = within(screen.getByRole('dialog', { name: 'New user' }))
+      fireEvent.change(dialog.getByLabelText('Name'), { target: { value: agent.name } })
+      fireEvent.change(dialog.getByLabelText('Email'), { target: { value: agent.email } })
+      fireEvent.change(dialog.getByLabelText('Password'), { target: { value: 'correct-horse' } })
+      fireEvent.click(dialog.getByRole('button', { name: 'Create user' }))
+
+      expect(await screen.findByRole('cell', { name: agent.name })).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(mockApiPost).toHaveBeenCalledWith('/api/users', {
+        name: agent.name,
+        email: agent.email,
+        password: 'correct-horse',
+      })
+      expect(mockApiGet).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not reload the list when creating the user fails', async () => {
+      mockApiGet.mockResolvedValue({ users: [admin] })
+      mockApiPost.mockRejectedValue(new Error('Request failed'))
+      renderPage()
+      await screen.findByRole('cell', { name: admin.name })
+
+      fireEvent.click(newUserButton())
+      const dialog = within(screen.getByRole('dialog', { name: 'New user' }))
+      fireEvent.change(dialog.getByLabelText('Name'), { target: { value: agent.name } })
+      fireEvent.change(dialog.getByLabelText('Email'), { target: { value: agent.email } })
+      fireEvent.change(dialog.getByLabelText('Password'), { target: { value: 'correct-horse' } })
+      fireEvent.click(dialog.getByRole('button', { name: 'Create user' }))
+
+      await dialog.findByRole('alert')
+      expect(mockApiGet).toHaveBeenCalledTimes(1)
+    })
   })
 })

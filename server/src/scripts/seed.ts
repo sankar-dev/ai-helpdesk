@@ -23,8 +23,9 @@ async function seedAdmin() {
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) {
-    await prisma.user.update({ where: { email }, data: { role: Role.admin } })
-    console.log(`Admin ${email} already exists (role set to admin)`)
+    // Also restore the user if they were soft-deleted, so the seed admin can always sign in
+    await prisma.user.update({ where: { email }, data: { role: Role.admin, deletedAt: null } })
+    console.log(`Admin ${email} already exists (role set to admin, not deleted)`)
     return
   }
 

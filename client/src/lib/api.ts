@@ -11,3 +11,26 @@ export async function apiGet<T>(path: string, config?: AxiosRequestConfig): Prom
   const res = await api.get<T>(path, config)
   return res.data
 }
+
+export async function apiPost<T>(
+  path: string,
+  data: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const res = await api.post<T>(path, data, config)
+  return res.data
+}
+
+export async function apiDelete<T = void>(path: string, config?: AxiosRequestConfig): Promise<T> {
+  const res = await api.delete<T>(path, config)
+  return res.data
+}
+
+export async function apiPatch<T>(
+  path: string,
+  data: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const res = await api.patch<T>(path, data, config)
+  return res.data
+}
