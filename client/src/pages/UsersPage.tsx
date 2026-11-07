@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import CreateUserDialog from '@/components/CreateUserDialog'
+import EditUserDialog from '@/components/EditUserDialog'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -11,14 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { apiGet } from '@/lib/api'
-
-type User = {
-  id: string
-  name: string
-  email: string
-  role: 'admin' | 'agent'
-  createdAt: string
-}
+import type { User } from '@/types/user'
 
 function UsersTableHeader() {
   return (
@@ -28,6 +22,9 @@ function UsersTableHeader() {
         <TableHead>Email</TableHead>
         <TableHead>Role</TableHead>
         <TableHead>Created</TableHead>
+        <TableHead className="w-12">
+          <span className="sr-only">Actions</span>
+        </TableHead>
       </TableRow>
     </TableHeader>
   )
@@ -65,6 +62,9 @@ export default function UsersPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
+                    <TableCell>
+                      <Skeleton className="size-8" />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -88,6 +88,9 @@ export default function UsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <EditUserDialog user={user} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

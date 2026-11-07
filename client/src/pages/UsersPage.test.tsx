@@ -1,13 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiGet, apiPost } from '@/lib/api'
+import { apiGet, apiPatch, apiPost } from '@/lib/api'
 import UsersPage from './UsersPage'
 
-vi.mock('@/lib/api', () => ({ apiGet: vi.fn(), apiPost: vi.fn() }))
+vi.mock('@/lib/api', () => ({ apiGet: vi.fn(), apiPost: vi.fn(), apiPatch: vi.fn() }))
+// The edit dialog reads the session to refresh it after a self-edit
+vi.mock('@/lib/auth-client', () => ({
+  useSession: () => ({ data: { user: { id: 'current-admin' } }, refetch: vi.fn() }),
+}))
 
 const mockApiGet = vi.mocked(apiGet)
 const mockApiPost = vi.mocked(apiPost)
+const mockApiPatch = vi.mocked(apiPatch)
 
 const admin = {
   id: '1',
@@ -46,6 +51,7 @@ describe('UsersPage', () => {
   beforeEach(() => {
     mockApiGet.mockReset()
     mockApiPost.mockReset()
+    mockApiPatch.mockReset()
   })
 
   it('requests the user list from the API', async () => {
@@ -141,6 +147,43 @@ describe('UsersPage', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByText('No users yet.')).not.toBeInTheDocument()
     expect(screen.queryByRole('status', { name: 'Loading users' })).not.toBeInTheDocument()
+  })
+
+  describe('editing a user', () => {
+    it('shows an edit button on each row', async () => {
+      mockApiGet.mockResolvedValue({ users: [admin, agent] })
+
+      renderPage()
+
+      const adminRow = within(
+        (await screen.findByRole('cell', { name: admin.name })).closest('tr')!,
+      )
+      expect(adminRow.getByRole('button', { name: `Edit ${admin.name}` })).toBeInTheDocument()
+      const agentRow = within(screen.getByRole('cell', { name: agent.name }).closest('tr')!)
+      expect(agentRow.getByRole('button', { name: `Edit ${agent.name}` })).toBeInTheDocument()
+    })
+
+    it('saves the changes and shows them in the list', async () => {
+      const renamed = { ...agent, name: 'Samantha Agent' }
+      mockApiGet.mockResolvedValueOnce({ users: [admin, agent] })
+      mockApiGet.mockResolvedValueOnce({ users: [admin, renamed] })
+      mockApiPatch.mockResolvedValue({})
+      renderPage()
+
+      fireEvent.click(await screen.findByRole('button', { name: `Edit ${agent.name}` }))
+      const dialog = within(screen.getByRole('dialog', { name: 'Edit user' }))
+      expect(dialog.getByLabelText('Email')).toHaveValue(agent.email)
+      fireEvent.change(dialog.getByLabelText('Name'), { target: { value: renamed.name } })
+      fireEvent.click(dialog.getByRole('button', { name: 'Save changes' }))
+
+      expect(await screen.findByRole('cell', { name: renamed.name })).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(mockApiPatch).toHaveBeenCalledWith(`/api/users/${agent.id}`, {
+        name: renamed.name,
+        email: agent.email,
+      })
+      expect(mockApiGet).toHaveBeenCalledTimes(2)
+    })
   })
 
   describe('creating a user', () => {

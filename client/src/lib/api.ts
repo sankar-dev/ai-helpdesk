@@ -20,3 +20,12 @@ export async function apiPost<T>(
   const res = await api.post<T>(path, data, config)
   return res.data
 }
+
+export async function apiPatch<T>(
+  path: string,
+  data: unknown,
+  config?: AxiosRequestConfig,
+): Promise<T> {
+  const res = await api.patch<T>(path, data, config)
+  return res.data
+}
