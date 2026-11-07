@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiGet } from '@/lib/api'
+import { apiGet, apiPost } from '@/lib/api'
 import UsersPage from './UsersPage'
 
 vi.mock('@/lib/api', () => ({ apiGet: vi.fn(), apiPost: vi.fn() }))
 
 const mockApiGet = vi.mocked(apiGet)
+const mockApiPost = vi.mocked(apiPost)
 
 const admin = {
   id: '1',
@@ -44,6 +45,7 @@ function expectTableHeaders() {
 describe('UsersPage', () => {
   beforeEach(() => {
     mockApiGet.mockReset()
+    mockApiPost.mockReset()
   })
 
   it('requests the user list from the API', async () => {
@@ -139,5 +141,90 @@ describe('UsersPage', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByText('No users yet.')).not.toBeInTheDocument()
     expect(screen.queryByRole('status', { name: 'Loading users' })).not.toBeInTheDocument()
+  })
+
+  describe('creating a user', () => {
+    function newUserButton() {
+      return screen.getByRole('button', { name: 'New user' })
+    }
+
+    it('shows the New user button while the list is loading', () => {
+      mockApiGet.mockReturnValue(new Promise(() => {}))
+
+      renderPage()
+
+      expect(newUserButton()).toBeInTheDocument()
+    })
+
+    it('shows the New user button above the user list', async () => {
+      mockApiGet.mockResolvedValue({ users: [admin] })
+
+      renderPage()
+
+      const table = (await screen.findByRole('cell', { name: admin.name })).closest('table')!
+      expect(
+        newUserButton().compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    })
+
+    it('shows the New user button when there are no users', async () => {
+      mockApiGet.mockResolvedValue({ users: [] })
+
+      renderPage()
+
+      await screen.findByText('No users yet.')
+      expect(newUserButton()).toBeInTheDocument()
+    })
+
+    it('shows the New user button when the list fails to load', async () => {
+      mockApiGet.mockRejectedValue(new Error('Request failed'))
+
+      renderPage()
+
+      await screen.findByText("Couldn't load users.")
+      expect(newUserButton()).toBeInTheDocument()
+    })
+
+    it('closes the modal and shows the new user in the list', async () => {
+      mockApiGet.mockResolvedValueOnce({ users: [admin] })
+      mockApiGet.mockResolvedValueOnce({ users: [admin, agent] })
+      mockApiPost.mockResolvedValue({})
+      renderPage()
+      await screen.findByRole('cell', { name: admin.name })
+      expect(screen.queryByRole('cell', { name: agent.name })).not.toBeInTheDocument()
+
+      fireEvent.click(newUserButton())
+      const dialog = within(screen.getByRole('dialog', { name: 'New user' }))
+      fireEvent.change(dialog.getByLabelText('Name'), { target: { value: agent.name } })
+      fireEvent.change(dialog.getByLabelText('Email'), { target: { value: agent.email } })
+      fireEvent.change(dialog.getByLabelText('Password'), { target: { value: 'correct-horse' } })
+      fireEvent.click(dialog.getByRole('button', { name: 'Create user' }))
+
+      expect(await screen.findByRole('cell', { name: agent.name })).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(mockApiPost).toHaveBeenCalledWith('/api/users', {
+        name: agent.name,
+        email: agent.email,
+        password: 'correct-horse',
+      })
+      expect(mockApiGet).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not reload the list when creating the user fails', async () => {
+      mockApiGet.mockResolvedValue({ users: [admin] })
+      mockApiPost.mockRejectedValue(new Error('Request failed'))
+      renderPage()
+      await screen.findByRole('cell', { name: admin.name })
+
+      fireEvent.click(newUserButton())
+      const dialog = within(screen.getByRole('dialog', { name: 'New user' }))
+      fireEvent.change(dialog.getByLabelText('Name'), { target: { value: agent.name } })
+      fireEvent.change(dialog.getByLabelText('Email'), { target: { value: agent.email } })
+      fireEvent.change(dialog.getByLabelText('Password'), { target: { value: 'correct-horse' } })
+      fireEvent.click(dialog.getByRole('button', { name: 'Create user' }))
+
+      await dialog.findByRole('alert')
+      expect(mockApiGet).toHaveBeenCalledTimes(1)
+    })
   })
 })
