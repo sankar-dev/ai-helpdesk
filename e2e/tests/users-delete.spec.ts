@@ -166,9 +166,6 @@ test.describe('delete user as admin', () => {
   test('deleting a user someone else already deleted shows an error and keeps the dialog open', async ({
     page,
   }) => {
-    // Known app bug: the 404 refetch removes the row, and the dialog (rendered inside the row)
-    // unmounts with it, so the message never stays on screen. Remove once fixed.
-    test.fail()
     const agent = await createUser({ role: 'agent' })
     const dialog = await openDeleteDialog(page, agent)
     await deleteViaApi(agent.id)
@@ -184,13 +181,18 @@ test.describe('delete user as admin', () => {
     await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeEnabled()
   })
 
-  test('deleting a user someone else already deleted removes the stale row', async ({ page }) => {
+  test('closing the dialog after an "already deleted" error removes the stale row', async ({
+    page,
+  }) => {
     const agent = await createUser({ role: 'agent' })
     const dialog = await openDeleteDialog(page, agent)
     await deleteViaApi(agent.id)
 
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(dialog.getByRole('alert')).toHaveText('This user has already been deleted.')
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
 
+    await expect(dialog).toBeHidden()
     await expect(userRow(page, agent.email)).toHaveCount(0)
     await expect(userRow(page, testAdmin.email)).toHaveCount(1)
   })

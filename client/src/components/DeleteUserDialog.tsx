@@ -32,8 +32,7 @@ export default function DeleteUserDialog({ user }: { user: User }) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['users'] })
       setOpen(false)
-    },
-  })
+    },  })
 
   return (
     <Dialog
