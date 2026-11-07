@@ -53,7 +53,8 @@ Each phase ends with something working that you can see or test. Tasks are small
 - [x] Add user management API (admin only): list (`GET /api/users`)
 - [x] Add user management API (admin only): create (`POST /api/users`)
 - [x] Add user management API (admin only): edit name, email and optionally password (`PATCH /api/users/:id`), with an edit dialog on each row of the Users page
-- [ ] Add user management API (admin only): update role, deactivate (deletes their sessions), reactivate
+- [x] Add user management API (admin only): soft delete (`DELETE /api/users/:id`, sets `deletedAt`, deletes their sessions, blocks sign-in; admins can't be deleted), with a confirmation modal on agent rows
+- [ ] Add user management API (admin only): update role, restore a deleted user
 - [x] Tests: unauthenticated request gets 401, agent on admin route gets 403
 
 ### Frontend

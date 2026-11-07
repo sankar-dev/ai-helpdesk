@@ -29,11 +29,11 @@ const user: User = {
   createdAt: '2026-03-20T12:00:00.000Z',
 }
 
-function httpError(status: number) {
+function httpError(status: number, data: object = {}) {
   return new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
     status,
     statusText: '',
-    data: {},
+    data,
     headers: {},
     config: { headers: new AxiosHeaders() },
   })
@@ -198,6 +198,19 @@ describe('EditUserDialog', () => {
     expect(await dialog.findByText('A user with this email already exists')).toBeInTheDocument()
     expect(dialog.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it("shows the server's message when the email belongs to a deleted user", async () => {
+    mockApiPatch.mockRejectedValue(
+      httpError(409, { error: 'This email belongs to a deleted user' }),
+    )
+    renderDialog()
+    const dialog = openDialog()
+
+    save(dialog)
+
+    expect(await dialog.findByText('This email belongs to a deleted user')).toBeInTheDocument()
+    expect(dialog.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('says when the user no longer exists', async () => {

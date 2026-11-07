@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { isAxiosError } from 'axios'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -8,6 +7,7 @@ import { DialogClose, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { apiPost } from '@/lib/api'
+import { apiErrorMessage, apiErrorStatus } from '@/lib/api-error'
 
 const createUserSchema = z.object({
   name: z.string().trim().min(3, 'Name must be at least 3 characters'),
@@ -40,8 +40,11 @@ export default function CreateUserForm({ onCreated }: { onCreated: () => void })
       onCreated()
     },
     onError: (error) => {
-      if (isAxiosError(error) && error.response?.status === 409) {
-        setError('email', { message: 'A user with this email already exists' })
+      if (apiErrorStatus(error) === 409) {
+        // The server says whether the email belongs to an active or a deleted user
+        setError('email', {
+          message: apiErrorMessage(error) ?? 'A user with this email already exists',
+        })
         return
       }
       setError('root.server', { message: "Couldn't create the user. Try again." })

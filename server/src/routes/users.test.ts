@@ -138,7 +138,7 @@ describe('POST /api/users', () => {
 
   it('returns 409 when the email is already taken', async () => {
     mockSession(fakeSession(Role.admin))
-    findUnique.mockResolvedValue({ id: 'existing-id' })
+    findUnique.mockResolvedValue({ id: 'existing-id', deletedAt: null })
 
     const res = await request(createApp())
       .post('/api/users')
@@ -148,8 +148,19 @@ describe('POST /api/users', () => {
     expect(res.body).toEqual({ error: 'A user with this email already exists' })
     expect(findUnique).toHaveBeenCalledWith({
       where: { email: body.email },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     })
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it('returns 409 with its own message when a deleted user has the email', async () => {
+    mockSession(fakeSession(Role.admin))
+    findUnique.mockResolvedValue({ id: 'deleted-id', deletedAt: new Date() })
+
+    const res = await request(createApp()).post('/api/users').send(body)
+
+    expect(res.status).toBe(409)
+    expect(res.body).toEqual({ error: 'This email belongs to a deleted user' })
     expect(create).not.toHaveBeenCalled()
   })
 
@@ -171,7 +182,7 @@ describe('PATCH /api/users/:id', () => {
   const target = { id: 'u2', accounts: [{ id: 'acc-1' }] }
 
   // The first lookup is by id (does the user exist?), the second by email (is it taken?)
-  type Found = { id: string; accounts?: { id: string }[] } | null
+  type Found = { id: string; deletedAt?: Date | null; accounts?: { id: string }[] } | null
   function lookups({ user = target as Found, emailOwner = null as Found } = {}) {
     findUnique.mockImplementation(({ where }: { where: { id?: string; email?: string } }) =>
       Promise.resolve(where.id !== undefined ? user : emailOwner),
@@ -343,7 +354,10 @@ describe('PATCH /api/users/:id', () => {
 
     expect(res.status).toBe(409)
     expect(res.body).toEqual({ error: 'A user with this email already exists' })
-    expect(findUnique).toHaveBeenCalledWith({ where: { email: body.email }, select: { id: true } })
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { email: body.email },
+      select: { id: true, deletedAt: true },
+    })
     expect(update).not.toHaveBeenCalled()
   })
 
@@ -355,6 +369,107 @@ describe('PATCH /api/users/:id', () => {
 
     expect(res.status).toBe(200)
     expect(update).toHaveBeenCalled()
+  })
+
+  it('returns 404 for a deleted user', async () => {
+    mockSession(fakeSession(Role.admin))
+    lookups({ user: { id: 'u2', deletedAt: new Date(), accounts: [] } })
+
+    const res = await request(createApp()).patch('/api/users/u2').send(body)
+
+    expect(res.status).toBe(404)
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('returns 409 with its own message when a deleted user has the email', async () => {
+    mockSession(fakeSession(Role.admin))
+    lookups({ emailOwner: { id: 'deleted-id', deletedAt: new Date() } })
+
+    const res = await request(createApp()).patch('/api/users/u2').send(body)
+
+    expect(res.status).toBe(409)
+    expect(res.body).toEqual({ error: 'This email belongs to a deleted user' })
+    expect(update).not.toHaveBeenCalled()
+  })
+})
+
+describe('DELETE /api/users/:id', () => {
+  beforeEach(() => {
+    findUnique.mockReset()
+    findUnique.mockResolvedValue({ role: Role.agent, deletedAt: null })
+    update.mockReset()
+    update.mockResolvedValue({})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('returns 401 without a session', async () => {
+    mockSession(null)
+
+    const res = await request(createApp()).delete('/api/users/u2')
+
+    expect(res.status).toBe(401)
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('returns 403 for an agent', async () => {
+    mockSession(fakeSession(Role.agent))
+
+    const res = await request(createApp()).delete('/api/users/u2')
+
+    expect(res.status).toBe(403)
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('soft-deletes an agent and signs them out everywhere', async () => {
+    mockSession(fakeSession(Role.admin))
+
+    const res = await request(createApp()).delete('/api/users/u2')
+
+    expect(res.status).toBe(204)
+    expect(res.body).toEqual({})
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { id: 'u2' },
+      select: { role: true, deletedAt: true },
+    })
+    const { where, data } = update.mock.calls[0][0]
+    expect(where).toEqual({ id: 'u2', deletedAt: null, role: Role.agent })
+    expect(data.deletedAt).toBeInstanceOf(Date)
+    expect(data.sessions).toEqual({ deleteMany: {} })
+  })
+
+  it('returns 404 for an unknown user', async () => {
+    mockSession(fakeSession(Role.admin))
+    findUnique.mockResolvedValue(null)
+
+    const res = await request(createApp()).delete('/api/users/missing')
+
+    expect(res.status).toBe(404)
+    expect(res.body).toEqual({ error: 'User not found' })
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 for a user who is already deleted', async () => {
+    mockSession(fakeSession(Role.admin))
+    findUnique.mockResolvedValue({ role: Role.agent, deletedAt: new Date() })
+
+    const res = await request(createApp()).delete('/api/users/u2')
+
+    expect(res.status).toBe(404)
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('refuses to delete an admin', async () => {
+    mockSession(fakeSession(Role.admin))
+    findUnique.mockResolvedValue({ role: Role.admin, deletedAt: null })
+
+    const res = await request(createApp()).delete('/api/users/u1')
+
+    expect(res.status).toBe(403)
+    expect(res.body).toEqual({ error: 'Admins cannot be deleted' })
+    expect(update).not.toHaveBeenCalled()
   })
 })
 
@@ -407,6 +522,7 @@ describe('GET /api/users', () => {
       ],
     })
     expect(findMany).toHaveBeenCalledWith({
+      where: { deletedAt: null },
       select: { id: true, name: true, email: true, role: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     })

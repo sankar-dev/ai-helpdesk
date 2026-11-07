@@ -1,6 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { isAxiosError } from 'axios'
 import { Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -19,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { apiPatch } from '@/lib/api'
+import { apiErrorMessage, apiErrorStatus } from '@/lib/api-error'
 import { useSession } from '@/lib/auth-client'
 import type { User } from '@/types/user'
 
@@ -60,9 +60,12 @@ function EditUserForm({ user, onSaved }: { user: User; onSaved: () => void }) {
       onSaved()
     },
     onError: (error) => {
-      const status = isAxiosError(error) ? error.response?.status : undefined
+      const status = apiErrorStatus(error)
       if (status === 409) {
-        setError('email', { message: 'A user with this email already exists' })
+        // The server says whether the email belongs to an active or a deleted user
+        setError('email', {
+          message: apiErrorMessage(error) ?? 'A user with this email already exists',
+        })
         return
       }
       setError('root.server', {

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import CreateUserDialog from '@/components/CreateUserDialog'
+import DeleteUserDialog from '@/components/DeleteUserDialog'
 import EditUserDialog from '@/components/EditUserDialog'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,7 +23,7 @@ function UsersTableHeader() {
         <TableHead>Email</TableHead>
         <TableHead>Role</TableHead>
         <TableHead>Created</TableHead>
-        <TableHead className="w-12">
+        <TableHead className="w-20">
           <span className="sr-only">Actions</span>
         </TableHead>
       </TableRow>
@@ -63,7 +64,7 @@ export default function UsersPage() {
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="size-8" />
+                      <Skeleton className="h-8 w-16" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -89,7 +90,11 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <EditUserDialog user={user} />
+                    <div className="flex gap-1">
+                      <EditUserDialog user={user} />
+                      {/* Admins can't be deleted (the server enforces this too) */}
+                      {user.role === 'agent' && <DeleteUserDialog user={user} />}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

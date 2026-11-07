@@ -21,6 +21,11 @@ export async function apiPost<T>(
   return res.data
 }
 
+export async function apiDelete<T = void>(path: string, config?: AxiosRequestConfig): Promise<T> {
+  const res = await api.delete<T>(path, config)
+  return res.data
+}
+
 export async function apiPatch<T>(
   path: string,
   data: unknown,

@@ -39,10 +39,13 @@ async function expectRow(
     user.email,
     user.role,
     await localDate(page, await createdAt(user.id)),
-    // The actions cell holds only the icon-only edit button
+    // The actions cell holds icon-only buttons: edit, plus delete for agents
     '',
   ])
   await expect(row.getByRole('button', { name: `Edit ${user.name}`, exact: true })).toBeVisible()
+  await expect(row.getByRole('button', { name: `Delete ${user.name}`, exact: true })).toHaveCount(
+    user.role === 'agent' ? 1 : 0,
+  )
 }
 
 test.describe('users page as admin', () => {

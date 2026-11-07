@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { auth } from '../auth/auth.js'
 import { requireAdmin, requireAuth } from '../auth/middleware.js'
 import { prisma } from '../db.js'
+import { Role } from '../generated/prisma/enums.js'
 
 export const usersRouter = Router()
 
@@ -41,11 +42,25 @@ function parseBody<S extends z.ZodType>(schema: S, req: Request, res: Response) 
   return parsed.data
 }
 
+// The 409 message when the email belongs to another user, or null when it's free. Soft-deleted
+// users keep their email reserved, and get their own message since they aren't in the list.
+async function emailConflict(email: string, exceptId?: string) {
+  const owner = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, deletedAt: true },
+  })
+  if (!owner || owner.id === exceptId) return null
+  return owner.deletedAt
+    ? 'This email belongs to a deleted user'
+    : 'A user with this email already exists'
+}
+
 // Every /api/users route is admin-only
 usersRouter.use(requireAuth, requireAdmin)
 
 usersRouter.get('/', async (_req, res) => {
   const users = await prisma.user.findMany({
+    where: { deletedAt: null },
     select: userSelect,
     orderBy: { createdAt: 'asc' },
   })
@@ -57,9 +72,9 @@ usersRouter.post('/', async (req, res) => {
   if (!body) return
   const { name, email, password } = body
 
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } })
-  if (existing) {
-    res.status(409).json({ error: 'A user with this email already exists' })
+  const conflict = await emailConflict(email)
+  if (conflict) {
+    res.status(409).json({ error: conflict })
     return
   }
 
@@ -96,16 +111,20 @@ usersRouter.patch('/:id', async (req, res) => {
 
   const target = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, accounts: { where: { providerId: 'credential' }, select: { id: true } } },
+    select: {
+      id: true,
+      deletedAt: true,
+      accounts: { where: { providerId: 'credential' }, select: { id: true } },
+    },
   })
-  if (!target) {
+  if (!target || target.deletedAt) {
     res.status(404).json({ error: 'User not found' })
     return
   }
 
-  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } })
-  if (existing && existing.id !== id) {
-    res.status(409).json({ error: 'A user with this email already exists' })
+  const conflict = await emailConflict(email, id)
+  if (conflict) {
+    res.status(409).json({ error: conflict })
     return
   }
 
@@ -137,4 +156,33 @@ usersRouter.patch('/:id', async (req, res) => {
     select: userSelect,
   })
   res.json({ user })
+})
+
+// Soft delete: the row stays (so the email stays reserved), but the user is hidden from the list,
+// signed out everywhere, and blocked from signing in again by the session hook in auth.ts.
+usersRouter.delete('/:id', async (req, res) => {
+  const { id } = req.params
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { role: true, deletedAt: true },
+  })
+  if (!target || target.deletedAt) {
+    res.status(404).json({ error: 'User not found' })
+    return
+  }
+  // Also stops admins from deleting themselves
+  if (target.role === Role.admin) {
+    res.status(403).json({ error: 'Admins cannot be deleted' })
+    return
+  }
+
+  // One update, so the user is marked deleted and signed out together. The where clause repeats
+  // the checks, so a change between the lookup and here can't delete an admin or re-delete a user
+  // (that rare race fails with Prisma's not-found error instead).
+  await prisma.user.update({
+    where: { id, deletedAt: null, role: Role.agent },
+    data: { deletedAt: new Date(), sessions: { deleteMany: {} } },
+  })
+  res.status(204).end()
 })

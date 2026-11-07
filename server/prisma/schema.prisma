@@ -26,6 +26,8 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   role          Role      @default(agent)
+  // Added by hand: soft delete. A deleted user is hidden, can't sign in, and keeps their email reserved.
+  deletedAt     DateTime?
   sessions      Session[]
   accounts      Account[]
 
